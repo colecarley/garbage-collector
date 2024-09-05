@@ -42,4 +42,17 @@ public:
     {
         return std::move(this->enclosing);
     }
+
+    void for_each(std::function<void(T)> lambda)
+    {
+        for (const auto &[key, value] : this->vars)
+        {
+            lambda(value);
+        }
+
+        if (this->enclosing.get() != nullptr)
+        {
+            this->enclosing->for_each(lambda);
+        }
+    }
 };

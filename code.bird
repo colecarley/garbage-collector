@@ -2,15 +2,16 @@
 let x = 10;
 let y = 3;
 
-puts x / y;
 puts x;
 puts y;
 
 
 {
-    let z = 3;
+    let z = 420;
+    {
+        let a = 69;
+        puts z;
+    }
     puts z;
     puts x;
 }
-
-puts z;

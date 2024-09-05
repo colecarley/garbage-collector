@@ -17,16 +17,100 @@
 #include "sym_table.h"
 #include "bird_exception.h"
 
+class Object
+{
+public:
+    bool marked;
+    int value;
+    Object *next;
+
+    Object(int value)
+    {
+        this->value = value;
+        this->marked = false;
+    }
+
+    int get_value()
+    {
+        return this->value;
+    }
+
+    void set_next(Object *next)
+    {
+        this->next = next;
+    }
+};
+
 class Interpreter : public Visitor
 {
-    std::unique_ptr<SymbolTable<int>> environment;
-    std::vector<int> stack;
-
 public:
+    std::unique_ptr<SymbolTable<Object *>> environment;
+    std::vector<Object *> stack;
+    Object *object_list = nullptr;
+
     Interpreter()
     {
-        this->environment = std::make_unique<SymbolTable<int>>(
-            SymbolTable<int>());
+        this->environment = std::make_unique<SymbolTable<Object *>>(
+            SymbolTable<Object *>());
+    }
+
+    Object *create_object(int value)
+    {
+        auto object = new Object(value);
+        object->set_next(this->object_list);
+        this->object_list = object;
+        return object;
+    }
+
+    void collect_garbage()
+    {
+        this->mark();
+        this->sweep();
+    }
+
+    void collect_all()
+    {
+        this->sweep();
+    }
+
+    void mark()
+    {
+        this->environment->for_each([](Object *value)
+                                    { value->marked = true; });
+    }
+
+    void sweep()
+    {
+        auto temp = this->object_list;
+        Object *previous = nullptr;
+        while (temp != nullptr)
+        {
+            if (!temp->marked)
+            {
+                if (previous == nullptr)
+                {
+                    auto to_delete = temp;
+                    previous = temp;
+                    temp = temp->next;
+                    this->object_list = temp;
+                    delete to_delete;
+                }
+                else
+                {
+                    previous->next = temp->next;
+                    auto to_delete = temp;
+                    previous = temp;
+                    temp = temp->next;
+                    delete to_delete;
+                }
+            }
+            else
+            {
+                temp->marked = false;
+                previous = temp;
+                temp = temp->next;
+            }
+        }
     }
 
     void evaluate(std::vector<std::unique_ptr<Stmt>> *stmts)
@@ -54,12 +138,13 @@ public:
             }
         }
         this->stack.clear();
+        this->collect_all();
     }
 
     void visitBlock(Block *block)
     {
-        auto new_environment = std::make_unique<SymbolTable<int>>(
-            SymbolTable<int>());
+        auto new_environment = std::make_unique<SymbolTable<Object *>>(
+            SymbolTable<Object *>());
         new_environment->set_enclosing(std::move(this->environment));
         this->environment = std::move(new_environment);
 
@@ -67,7 +152,9 @@ public:
         {
             expr->accept(this);
         }
+
         this->environment = std::move(this->environment->get_enclosing());
+        this->collect_garbage();
     }
 
     void visitDeclStmt(DeclStmt *decl_stmt)
@@ -93,7 +180,7 @@ public:
             auto result = this->stack[this->stack.size() - 1];
             this->stack.pop_back();
 
-            std::cout << result;
+            std::cout << result->get_value();
         }
         std::cout << std::endl;
     }
@@ -113,22 +200,23 @@ public:
         {
         case TokenType::PLUS:
         {
-            this->stack.push_back(left + right);
+            this->stack.push_back(
+                this->create_object(left->get_value() + right->get_value()));
             break;
         }
         case TokenType::MINUS:
         {
-            this->stack.push_back(left - right);
+            this->stack.push_back(this->create_object(left->get_value() - right->get_value()));
             break;
         }
         case TokenType::SLASH:
         {
-            this->stack.push_back(left / right);
+            this->stack.push_back(this->create_object(left->get_value() / right->get_value()));
             break;
         }
         case TokenType::STAR:
         {
-            this->stack.push_back(left * right);
+            this->stack.push_back(this->create_object(left->get_value() * right->get_value()));
             break;
         }
         default:
@@ -144,7 +232,7 @@ public:
         auto expr = this->stack[this->stack.size() - 1];
         this->stack.pop_back();
 
-        this->stack.push_back(-expr);
+        this->stack.push_back(this->create_object(-expr->get_value()));
     }
 
     void visitPrimary(Primary *primary)
@@ -153,7 +241,8 @@ public:
         {
         case TokenType::I32_LITERAL:
         {
-            this->stack.push_back(std::stoi(primary->value.lexeme));
+            auto value = this->create_object(std::stoi(primary->value.lexeme));
+            this->stack.push_back(value);
             break;
         }
         case TokenType::IDENTIFIER:
