@@ -12,6 +12,7 @@
 #include "decl_stmt.h"
 #include "print_stmt.h"
 #include "expr_stmt.h"
+#include "block.h"
 
 class AstPrinter : public Visitor
 {
@@ -26,6 +27,16 @@ public:
                 decl_stmt->accept(this);
             }
 
+            if (auto print_stmt = dynamic_cast<PrintStmt *>(stmt.get()))
+            {
+                print_stmt->accept(this);
+            }
+
+            if (auto block = dynamic_cast<Block *>(stmt.get()))
+            {
+                block->accept(this);
+            }
+
             if (auto expr_stmt = dynamic_cast<ExprStmt *>(stmt.get()))
             {
                 expr_stmt->accept(this);
@@ -34,20 +45,34 @@ public:
         }
     }
 
-    void visitDeclStmt(DeclStmt *decl_stmt)
+    void visitBlock(Block *block)
     {
-        std::cout << "let ";
-        std::cout << decl_stmt->identifier.lexeme << " = ";
+        std::cout << "{";
+        for (auto &expr : block->stmts)
+        {
+            expr->accept(this);
+        }
+        std::cout << "}";
+    }
+
+    void
+    visitDeclStmt(DeclStmt *decl_stmt)
+    {
+        std::cout << "(let ";
+        std::cout << decl_stmt->identifier.lexeme << " ";
         decl_stmt->value->accept(this);
+        std::cout << ")";
     }
 
     void visitPrintStmt(PrintStmt *print_stmt)
     {
+        std::cout << "(";
         std::cout << "puts ";
         for (auto &arg : print_stmt->args)
         {
             arg->accept(this);
         }
+        std::cout << ")";
     }
 
     void visitExprStmt(ExprStmt *expr_stmt)

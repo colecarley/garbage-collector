@@ -7,3 +7,10 @@ puts x;
 puts y;
 
 
+{
+    let z = 3;
+    puts z;
+    puts x;
+}
+
+puts z;

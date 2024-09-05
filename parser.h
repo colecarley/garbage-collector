@@ -20,6 +20,8 @@ public:
 
     std::unique_ptr<Stmt> stmt();
 
+    std::unique_ptr<Stmt> block();
+
     std::unique_ptr<Stmt> exprStmt();
 
     std::unique_ptr<Stmt> varDecl();

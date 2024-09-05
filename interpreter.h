@@ -12,16 +12,23 @@
 #include "decl_stmt.h"
 #include "print_stmt.h"
 #include "expr_stmt.h"
+#include "block.h"
 
 #include "sym_table.h"
 #include "bird_exception.h"
 
 class Interpreter : public Visitor
 {
-    SymbolTable<int> environment;
+    std::unique_ptr<SymbolTable<int>> environment;
     std::vector<int> stack;
 
 public:
+    Interpreter()
+    {
+        this->environment = std::make_unique<SymbolTable<int>>(
+            SymbolTable<int>());
+    }
+
     void evaluate(std::vector<std::unique_ptr<Stmt>> *stmts)
     {
         for (auto &stmt : *stmts)
@@ -36,12 +43,31 @@ public:
                 print_stmt->accept(this);
             }
 
+            if (auto block = dynamic_cast<Block *>(stmt.get()))
+            {
+                block->accept(this);
+            }
+
             if (auto expr_stmt = dynamic_cast<ExprStmt *>(stmt.get()))
             {
                 expr_stmt->accept(this);
             }
         }
         this->stack.clear();
+    }
+
+    void visitBlock(Block *block)
+    {
+        auto new_environment = std::make_unique<SymbolTable<int>>(
+            SymbolTable<int>());
+        new_environment->set_enclosing(std::move(this->environment));
+        this->environment = std::move(new_environment);
+
+        for (auto &expr : block->stmts)
+        {
+            expr->accept(this);
+        }
+        this->environment = std::move(this->environment->get_enclosing());
     }
 
     void visitDeclStmt(DeclStmt *decl_stmt)
@@ -51,7 +77,7 @@ public:
         auto result = this->stack[this->stack.size() - 1];
         this->stack.pop_back();
 
-        this->environment.insert(decl_stmt->identifier.lexeme, result);
+        this->environment->insert(decl_stmt->identifier.lexeme, result);
     }
 
     void visitExprStmt(ExprStmt *expr_stmt)
@@ -132,7 +158,7 @@ public:
         }
         case TokenType::IDENTIFIER:
         {
-            auto value = this->environment.get(primary->value.lexeme);
+            auto value = this->environment->get(primary->value.lexeme);
             this->stack.push_back(value);
             break;
         }

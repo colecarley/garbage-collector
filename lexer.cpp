@@ -36,6 +36,10 @@ std::string get_token_string(TokenType token_type)
         return "PUTS";
     case TokenType::COMMA:
         return "COMMA";
+    case TokenType::RBRACE:
+        return "RBRACE";
+    case TokenType::LBRACE:
+        return "LBRACE";
     }
 }
 
@@ -100,6 +104,12 @@ std::vector<Token> Lexer::lex()
             break;
         case ',':
             this->tokens.push_back(Token(TokenType::COMMA, ","));
+            break;
+        case '{':
+            this->tokens.push_back(Token(TokenType::LBRACE, "{"));
+            break;
+        case '}':
+            this->tokens.push_back(Token(TokenType::RBRACE, "}"));
             break;
         default:
         {

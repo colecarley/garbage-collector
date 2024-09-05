@@ -4,10 +4,13 @@
 #include <string>
 #include <memory>
 
+#include "bird_exception.h"
+
 template <typename T>
 class SymbolTable
 {
     std::map<std::string, T> vars;
+    std::unique_ptr<SymbolTable> enclosing;
 
 public:
     void insert(std::string identifier, T value)
@@ -17,6 +20,26 @@ public:
 
     T get(std::string identifier)
     {
-        return this->vars[identifier];
+        if (this->vars.count(identifier))
+        {
+            return this->vars[identifier];
+        }
+
+        if (this->enclosing.get() == nullptr)
+        {
+            throw BirdException("undefined variable");
+        }
+
+        return this->enclosing.get()->get(identifier);
+    }
+
+    void set_enclosing(std::unique_ptr<SymbolTable<T>> enclosing)
+    {
+        this->enclosing = std::move(enclosing);
+    }
+
+    std::unique_ptr<SymbolTable<T>> get_enclosing()
+    {
+        return std::move(this->enclosing);
     }
 };

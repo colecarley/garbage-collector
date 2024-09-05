@@ -5,6 +5,8 @@
 #include "decl_stmt.h"
 #include "print_stmt.h"
 #include "expr_stmt.h"
+#include "block.h"
+
 #include "bird_exception.h"
 
 Parser::Parser(std::vector<Token> tokens) : tokens(tokens)
@@ -33,8 +35,31 @@ std::unique_ptr<Stmt> Parser::stmt()
     {
         return this->printStmt();
     }
+    if (this->peek().token_type == TokenType::LBRACE)
+    {
+        return this->block();
+    }
 
     return this->exprStmt();
+}
+
+std::unique_ptr<Stmt> Parser::block()
+{
+    if (this->advance().token_type != TokenType::LBRACE)
+    {
+        throw BirdException("Expected '{' at start of block");
+    }
+
+    auto stmts = std::vector<std::unique_ptr<Stmt>>();
+
+    while (this->peek().token_type != TokenType::RBRACE)
+    {
+        stmts.push_back(std::move(this->stmt()));
+    }
+
+    this->advance();
+
+    return std::make_unique<Block>(Block(std::move(stmts)));
 }
 
 std::unique_ptr<Stmt> Parser::exprStmt()

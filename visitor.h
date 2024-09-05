@@ -10,6 +10,7 @@ class Primary;
 class DeclStmt;
 class ExprStmt;
 class PrintStmt;
+class Block;
 
 class Visitor
 {
@@ -21,4 +22,5 @@ public:
     virtual void visitDeclStmt(DeclStmt *) = 0;
     virtual void visitExprStmt(ExprStmt *) = 0;
     virtual void visitPrintStmt(PrintStmt *) = 0;
+    virtual void visitBlock(Block *) = 0;
 };
