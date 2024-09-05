@@ -1,0 +1,9 @@
+
+let x = 10;
+let y = 3;
+
+puts x / y;
+puts x;
+puts y;
+
+
